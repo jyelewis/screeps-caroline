@@ -23,6 +23,10 @@ function createProcess(
 
     readState: () => state.current,
     writeState: (newState) => (state.current = newState),
+
+    ctx: {
+      exampleService: 123,
+    } as any,
   });
 
   const run = (iterations: number) => {
@@ -288,6 +292,8 @@ describe("threading", () => {
 
       readState: () => state.current,
       writeState: (newState) => (state.current = newState),
+
+      ctx: {} as any,
     });
 
     process1.execute(0);
@@ -315,6 +321,8 @@ describe("threading", () => {
 
       readState: () => state.current,
       writeState: (newState) => (state.current = newState),
+
+      ctx: {} as any,
     });
 
     process2.execute(1);
@@ -325,11 +333,102 @@ describe("threading", () => {
     });
   });
 
-  it.todo("Can spawn child threads attached to other parents");
+  it("Can spawn child threads attached to other parents", () => {
+    const mainTask: Task = function* mainTask(thread) {
+      const secondRootThread = thread.startSubThread(
+        secondRootTask,
+        {},
+        {
+          parentThreadId: null,
+        }
+      );
+
+      thread.startSubThread(
+        subTask,
+        {},
+        {
+          parentThreadId: secondRootThread.id,
+        }
+      );
+
+      yield thread.suspend();
+    };
+
+    const secondRootTask: Task = function* secondRootTask(thread) {
+      yield thread.suspend();
+    };
+
+    const subTask: Task = function* subTask(thread) {
+      yield thread.suspend();
+    };
+
+    const [run, process] = createProcess([mainTask, secondRootTask, subTask]);
+
+    run(1);
+
+    const mainThread = process.getThreadByName("main");
+    const secondRootThread = process.getThreadByName("secondRoot");
+    const subThread = process.getThreadByName("secondRoot -> sub");
+
+    run(1);
+
+    expect(mainThread.state.isRunning).toEqual(true);
+    expect(secondRootThread.state.isRunning).toEqual(true);
+    expect(subThread.state.isRunning).toEqual(true);
+
+    expect(secondRootThread.state.parentThreadId).toEqual(null);
+    expect(subThread.state.parentThreadId).toEqual(secondRootThread.id);
+  });
 
   it.todo("Bubbles crash to thread blocked on this");
 
   it.todo("Restarts if thread crashes & no one is blocking");
 
-  it.todo("Interrupts");
+  it("Interrupts", () => {
+    const mainTask: Task = function* mainTask(thread) {
+      thread.startSubThread(counterTask, {});
+      thread.startSubThread(emitterTask, {});
+
+      yield thread.suspend();
+    };
+
+    let counter = 0;
+    const counterTask: Task = function* counterTask(thread) {
+      counter++;
+
+      yield thread.suspend();
+    };
+    counterTask.interrupts = (thread) => {
+      thread.registerInterrupt("COUNT", () => thread.restart());
+    };
+
+    const emitterTask: Task = function* emitterTask(thread) {
+      thread.interruptProcess("COUNT");
+
+      yield thread.sleepTicks(5);
+
+      yield thread.restart();
+    };
+
+    const [run] = createProcess([mainTask, counterTask, emitterTask]);
+
+    run(20);
+
+    // start with 1, plus extra every 5 ticks
+    expect(counter).toEqual(5);
+  });
+
+  it("Provides context", () => {
+    const mainTask: Task = function* mainTask(thread) {
+      expect(thread.ctx).toEqual({
+        exampleService: 123,
+      });
+
+      yield thread.suspend();
+    };
+
+    const [run] = createProcess([mainTask]);
+
+    run(1);
+  });
 });

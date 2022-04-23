@@ -2,6 +2,7 @@ import { IThreadState } from "./IThreadState";
 import { Task } from "./Task";
 import { Process } from "./Process";
 import { randomBetween } from "../utils/randomBetween";
+import { ThreadCtx } from "./ThreadCtx";
 
 export const YIELDME = Symbol("YIELDME");
 
@@ -15,6 +16,8 @@ export class Thread<Props = unknown> {
   // true while we are fast forwarding through a function
   private isHydrating: boolean = false;
   private hydratingNextMemoIndex: number = 0;
+
+  private interruptHandlers: Record<string, () => void> = {};
 
   // ----- constructors -----------------------------------
   public constructor(
@@ -203,9 +206,24 @@ export class Thread<Props = unknown> {
     return this.state.props;
   }
 
+  get ctx(): ThreadCtx {
+    return this.process.config.ctx;
+  }
+
   // ----- helper functions (no yield) -----------------------------------
-  public registerInterrupt() {
-    // TODO: interrupts
+  public registerInterrupt(eventName: string, handler: () => void) {
+    if (eventName in this.interruptHandlers) {
+      throw new Error(
+        `Interrupt '${eventName}' already has a handler registered`
+      );
+    }
+
+    this.interruptHandlers[eventName] = handler;
+    this.process.registerInterrupt(eventName, handler);
+  }
+
+  public interruptProcess(eventName: string) {
+    this.process.interrupt(eventName);
   }
 
   public log(...msg: any[]): void {
@@ -271,6 +289,10 @@ export class Thread<Props = unknown> {
     return this.process.getThreadById(threadId);
   }
 
+  public resume() {
+    this.state.nextExecution = 0;
+  }
+
   // ----- helper functions (yield required) -----------------------------------
   public restart() {
     if (!this.state.isRunning) {
@@ -333,17 +355,19 @@ export class Thread<Props = unknown> {
       this.process.markCurrentExecutionDirty();
     }
 
+    // unregister interrupt handlers
+    for (const eventName in this.interruptHandlers) {
+      this.process.unregisterInterrupt(
+        eventName,
+        this.interruptHandlers[eventName]
+      );
+    }
+
     return YIELDME;
   }
 
   public suspend() {
     this.state.nextExecution = null;
-
-    return YIELDME;
-  }
-
-  public resume() {
-    this.state.nextExecution = 0;
 
     return YIELDME;
   }

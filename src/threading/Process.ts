@@ -1,6 +1,7 @@
 import { IThreadState } from "./IThreadState";
 import { Thread } from "./Thread";
 import { Task } from "./Task";
+import { ThreadCtx } from "./ThreadCtx";
 
 interface IProcessConfig {
   rootTask: Task;
@@ -13,6 +14,8 @@ interface IProcessConfig {
 
   readState: () => undefined | IProcessState;
   writeState: (state: IProcessState) => void;
+
+  ctx: ThreadCtx;
 }
 
 export interface IProcessState {
@@ -33,6 +36,8 @@ export class Process {
   private threadsByName = new Map<string, Thread>();
 
   private tasksByName = new Map<string, Task<unknown>>();
+
+  private interruptHandlers = new Map<string, Array<() => void>>();
 
   // indicates we need to re check all threads
   // (set to true if a thread is created mid-execution)
@@ -170,6 +175,36 @@ export class Process {
 
     // save out state
     this.config.writeState(this.state);
+  }
+
+  // ---- interrupts -----------------------
+
+  public registerInterrupt(eventName: string, handler: () => void) {
+    const handlers = this.interruptHandlers.get(eventName);
+    if (handlers === undefined) {
+      this.interruptHandlers.set(eventName, [handler]);
+    } else {
+      handlers.push(handler);
+    }
+  }
+
+  public unregisterInterrupt(eventName: string, handler: () => void) {
+    const handlers = this.interruptHandlers.get(eventName);
+    if (handlers !== undefined) {
+      const updatedHandlers = handlers.filter((x) => x !== handler);
+      this.interruptHandlers.set(eventName, updatedHandlers);
+    }
+  }
+
+  public interrupt(eventName: string) {
+    const handlers = this.interruptHandlers.get(eventName);
+    if (handlers === undefined) {
+      return;
+    }
+
+    for (const handler of handlers) {
+      handler();
+    }
   }
 
   public reset() {
