@@ -55,7 +55,6 @@ export class Thread<Props = unknown> {
       id: process.idForNewThread(),
       name,
       parentThreadId: parentThread === null ? null : parentThread.id,
-      childThreadIds: [],
 
       taskName: task.name,
       taskVersion: task.version || 0,
@@ -63,6 +62,7 @@ export class Thread<Props = unknown> {
 
       programCounter: 0,
       memoedValues: [],
+      childThreadIds: [],
 
       nextExecution: 0,
       blockingThreadId: undefined,
@@ -220,16 +220,19 @@ export class Thread<Props = unknown> {
   public memo<T>(memoFn: () => T): T {
     if (this.isHydrating) {
       // fast forward
-      // return value from memoedValues, rather than re-executing function
 
-      const memoedVal = this.state.memoedValues[this.hydratingNextMemoIndex];
+      // return value from memoedValues, rather than re-executing function
+      const memoedValue = this.state.memoedValues[this.hydratingNextMemoIndex];
+      const value = this.process.config.memoDeserialiser(memoedValue);
       this.hydratingNextMemoIndex++;
 
-      return memoedVal;
+      return value;
     }
 
     const value = memoFn();
-    this.state.memoedValues.push(value);
+
+    const memoedValue = this.process.config.memoSerialiser(value);
+    this.state.memoedValues.push(memoedValue);
 
     return value;
   }

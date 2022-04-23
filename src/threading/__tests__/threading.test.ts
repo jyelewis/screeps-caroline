@@ -257,9 +257,79 @@ describe("threading", () => {
     expect(counter).toEqual((1 + 2 + 3) * 10);
   });
 
-  it.todo("Seralises memo'ed values");
+  it("Serialises memo'ed values", () => {
+    let obj: any;
+    const mainTask: Task = function* mainTask(thread) {
+      obj = thread.memo(() => ({
+        hello: "world",
+      }));
 
-  it.todo("Bubbles crash to parent thread");
+      yield thread.suspend();
+    };
+    // ----------------------------------------
 
-  it.todo("Restarts if root level thread crashes");
+    let state: { current: undefined | IProcessState } = {
+      current: undefined,
+    };
+
+    const process1 = new Process({
+      tasks: [mainTask],
+      rootTask: mainTask,
+
+      ticksPerSecond: 1,
+      memoSerialiser: (x) => ({
+        ...x,
+        _seralised: true,
+      }),
+      memoDeserialiser: (x) => ({
+        ...x,
+        _deseralised: true,
+      }),
+
+      readState: () => state.current,
+      writeState: (newState) => (state.current = newState),
+    });
+
+    process1.execute(0);
+    expect(obj).toEqual({
+      hello: "world",
+    });
+    expect(state.current?.activeThreadStates[0].memoedValues[0]).toEqual({
+      hello: "world",
+      _seralised: true,
+    });
+
+    const process2 = new Process({
+      tasks: [mainTask],
+      rootTask: mainTask,
+
+      ticksPerSecond: 1,
+      memoSerialiser: (x) => ({
+        ...x,
+        _seralised: true,
+      }),
+      memoDeserialiser: (x) => ({
+        ...x,
+        _deseralised: true,
+      }),
+
+      readState: () => state.current,
+      writeState: (newState) => (state.current = newState),
+    });
+
+    process2.execute(1);
+    expect(obj).toEqual({
+      hello: "world",
+      _seralised: true,
+      _deseralised: true,
+    });
+  });
+
+  it.todo("Can spawn child threads attached to other parents");
+
+  it.todo("Bubbles crash to thread blocked on this");
+
+  it.todo("Restarts if thread crashes & no one is blocking");
+
+  it.todo("Interrupts");
 });
