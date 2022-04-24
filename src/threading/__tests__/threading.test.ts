@@ -334,6 +334,10 @@ describe("threading", () => {
     process1.execute(0);
     expect(obj).toEqual({
       hello: "world",
+      // we do both even on the initial fetch
+      // basically to support the proxy game object trick
+      _seralised: true,
+      _deseralised: true,
     });
     expect(state.current?.activeThreadStates[0].memoedValues[0]).toEqual({
       hello: "world",
@@ -489,5 +493,35 @@ describe("threading", () => {
 
     run(5);
     expect(counter).toEqual(2); // should have restarted
+  });
+
+  it("Suspended threads stay suspended after restarts", () => {
+    let counter = 0;
+    const mainTask: Task = function* mainTask(thread) {
+      thread.memo(() => counter++);
+
+      yield thread.sleepTick();
+      yield thread.restart();
+    };
+    // ----------------------------------------
+
+    const [run1, process1, state1] = createProcess([mainTask]);
+
+    run1(1);
+    expect(counter).toEqual(1);
+
+    process1.getThreadByName("main").suspend();
+
+    run1(10);
+    expect(counter).toEqual(1);
+
+    const [run2, process2] = createProcess([mainTask], state1.current, 11);
+
+    expect(counter).toEqual(1);
+
+    run2(10);
+    expect(counter).toEqual(1);
+
+    expect(process2.getThreadByName("main").state.nextExecution).toEqual(null);
   });
 });

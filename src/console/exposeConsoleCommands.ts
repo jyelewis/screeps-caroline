@@ -5,5 +5,6 @@ export function exposeConsoleCommands() {
   global.c = {
     process,
     top: () => top(process),
+    thread: (threadName: string) => process.getThreadByName(threadName),
   };
 }

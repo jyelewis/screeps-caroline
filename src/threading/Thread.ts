@@ -4,12 +4,12 @@ import { Process } from "./Process";
 import { randomBetween } from "../utils/randomBetween";
 import { ThreadCtx } from "./ThreadCtx";
 
-export const YIELDME = Symbol("YIELDME");
+export const YIELDME = "YIELDME" as const;
 
 export class Thread<Props = unknown> {
   // ----- internal state -----------------------------------
   private task: Task<Props>;
-  private taskGenerator: Generator<symbol, void> | undefined;
+  private taskGenerator: Generator<typeof YIELDME, void> | undefined;
 
   private loopFn: (() => boolean) | undefined = undefined;
 
@@ -133,6 +133,9 @@ export class Thread<Props = unknown> {
 
     while (canExecute()) {
       try {
+        // collect some stats
+        this.state.lastExecution = this.process.currentTime;
+
         // reset our next execution/sleep
         this.state.nextExecution = 0;
 
@@ -149,6 +152,7 @@ export class Thread<Props = unknown> {
         if (this.taskGenerator === undefined) {
           // call the task function to create the generator
           this.taskGenerator = this.task(this);
+          this.state.programCounter = 0; // restarting yields, which then incs pc - reset to 0
         }
 
         // execute until the next yield
@@ -171,9 +175,6 @@ export class Thread<Props = unknown> {
       } catch (e: any) {
         this.handleCrash(e);
       }
-
-      // collect some stats
-      this.state.lastExecution = this.process.currentTime;
     }
   }
 
@@ -265,10 +266,12 @@ export class Thread<Props = unknown> {
 
     const value = memoFn();
 
+    // even when passing directly seralise & deseralise the value
+    // this is to allow the proxy trick used for game objects
     const memoedValue = this.process.config.memoSerialiser(value);
     this.state.memoedValues.push(memoedValue);
 
-    return value;
+    return this.process.config.memoDeserialiser(memoedValue);
   }
 
   public startSubThread<SubTaskProps>(
@@ -390,7 +393,7 @@ export class Thread<Props = unknown> {
     return YIELDME;
   }
 
-  public sleepTicks(ticks: number): symbol {
+  public sleepTicks(ticks: number): typeof YIELDME {
     if (this.isHydrating) {
       // fast forward
       return YIELDME;

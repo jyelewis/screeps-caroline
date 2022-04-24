@@ -155,7 +155,7 @@ export class Process {
 
   public markCurrentExecutionDirty() {
     if (!this.isExecuting && !this.isHydrating) {
-      throw new Error("Process is not currently executing");
+      return;
     }
     this.currentExecutionIsDirty = true;
   }

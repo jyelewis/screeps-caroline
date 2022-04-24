@@ -30,7 +30,11 @@ interface ISerialisedValue {
   type: "SCREEPS_OBJ" | "RAW";
   value: any;
 }
-function memoSerialiser(data: any): ISerialisedValue {
+function memoSerialiser(data: any): undefined | ISerialisedValue {
+  if (data === undefined) {
+    return undefined;
+  }
+
   if (typeof data === "object" && data !== null && "id" in data) {
     // this is most likely a screeps game object
     // we can't store these in memory, so just store a reference to it
@@ -47,9 +51,34 @@ function memoSerialiser(data: any): ISerialisedValue {
 }
 
 function memoDeserialiser(data: ISerialisedValue): any {
-  if (data.type === "SCREEPS_OBJ") {
-    return Game.getObjectById(data.value);
+  if (typeof data !== "object" || data === null) {
+    return undefined;
   }
 
-  return data.value;
+  if (data.type === "RAW") {
+    return data.value;
+  }
+
+  const gameObjectId = data.value;
+
+  let gameObject = Game.getObjectById(gameObjectId);
+  if (gameObject === null) {
+    throw new Error(`GameObject '${gameObjectId}' not found`);
+  }
+
+  return new Proxy<any>(
+    {},
+    {
+      get(target: any, prop: string): any {
+        let gameObject = Game.getObjectById(gameObjectId);
+        if (gameObject === null) {
+          throw new Error(
+            `GameObject '${gameObjectId}' does not exist anymore`
+          );
+        }
+
+        return (gameObject as any)[prop];
+      },
+    }
+  );
 }
