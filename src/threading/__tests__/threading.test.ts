@@ -17,7 +17,7 @@ function createProcess(
     tasks: tasks,
     rootTask: tasks[0],
 
-    ticksPerSecond: 1,
+    tickPeriod: 1,
     memoSerialiser: (x) => x,
     memoDeserialiser: (x) => x,
 
@@ -315,7 +315,7 @@ describe("threading", () => {
       tasks: [mainTask],
       rootTask: mainTask,
 
-      ticksPerSecond: 1,
+      tickPeriod: 1,
       memoSerialiser: (x) => ({
         ...x,
         _seralised: true,
@@ -344,7 +344,7 @@ describe("threading", () => {
       tasks: [mainTask],
       rootTask: mainTask,
 
-      ticksPerSecond: 1,
+      tickPeriod: 1,
       memoSerialiser: (x) => ({
         ...x,
         _seralised: true,

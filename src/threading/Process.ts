@@ -8,7 +8,7 @@ interface IProcessConfig {
   rootTask: Task;
   tasks: Task<any>[];
 
-  ticksPerSecond: number;
+  tickPeriod: number;
 
   memoSerialiser: (val: any) => any;
   memoDeserialiser: (val: any) => any;

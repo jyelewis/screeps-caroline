@@ -23,7 +23,7 @@ export class Thread<Props = unknown> {
 
   // ----- constructors -----------------------------------
   public constructor(
-    private process: Process,
+    public process: Process,
     public readonly state: IThreadState<Props>
   ) {
     this.task = this.process.getTaskByName(state.taskName);
@@ -171,10 +171,10 @@ export class Thread<Props = unknown> {
       } catch (e: any) {
         this.handleCrash(e);
       }
-    }
 
-    // collect some stats
-    this.state.lastExecution = this.process.currentTime;
+      // collect some stats
+      this.state.lastExecution = this.process.currentTime;
+    }
   }
 
   private handleCrash(error: string | Error) {
@@ -406,7 +406,7 @@ export class Thread<Props = unknown> {
   }
 
   public sleepSeconds(seconds: number) {
-    const ticks = Math.floor(this.process.config.ticksPerSecond * seconds);
+    const ticks = Math.floor(seconds / this.process.config.tickPeriod);
 
     // add jitter to these ticks to knock threads out of sync
     return this.sleepTicks(ticks + randomBetween(-2, 2));
