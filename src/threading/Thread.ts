@@ -50,7 +50,7 @@ export class Thread<Props = unknown> {
       : // name of function without "task" suffix
         task.name.substring(0, task.name.length - 4);
     const name = parentThread
-      ? `${parentThread.name} -> ${nameSuffix}`
+      ? `${parentThread.name}.${nameSuffix}`
       : nameSuffix;
 
     // construct a new thread state for this task
@@ -260,6 +260,7 @@ export class Thread<Props = unknown> {
     props: SubTaskProps,
     options: {
       parentThreadId?: null | number;
+      startSuspended?: false | true;
     } = {}
   ) {
     // support re-hydrating, and re-attaching to the new thread object
@@ -280,8 +281,12 @@ export class Thread<Props = unknown> {
 
       this.process.addThread(newThread);
 
-      // new thread added, make sure it gets called this tick
-      this.process.markCurrentExecutionDirty();
+      if (options.startSuspended === true) {
+        newThread.suspend();
+      } else {
+        // new thread added, make sure it gets called this tick
+        this.process.markCurrentExecutionDirty();
+      }
 
       return newThread.id;
     });

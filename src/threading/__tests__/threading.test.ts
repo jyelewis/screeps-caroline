@@ -97,6 +97,41 @@ describe("threading", () => {
     expect(counter).toEqual(20);
   });
 
+  it("Starts sub thread already suspended", () => {
+    let counter = 0;
+    const mainTask: Task = function* mainTask(thread) {
+      thread.startSubThread(
+        subTask,
+        {},
+        {
+          startSuspended: true,
+        }
+      );
+      yield thread.suspend();
+    };
+
+    const subTask: Task = function* subTask(thread) {
+      counter++;
+
+      yield thread.sleepTick();
+      yield thread.restart();
+    };
+
+    const [run, process] = createProcess([mainTask, subTask]);
+
+    run(1);
+
+    const subThread = process.getThreadByName("main.sub");
+
+    run(10);
+    expect(counter).toEqual(0);
+
+    subThread.resume();
+
+    run(10);
+    expect(counter).toEqual(10);
+  });
+
   it("Forks to a sub-thread with do", () => {
     let counter = 0;
     const mainTask: Task = function* mainTask(thread) {
@@ -207,7 +242,7 @@ describe("threading", () => {
     run(1);
 
     const mainThread = process.getThreadByName("main");
-    const subThread = process.getThreadByName("main -> sub");
+    const subThread = process.getThreadByName("main.sub");
 
     run(1);
 
@@ -368,7 +403,7 @@ describe("threading", () => {
 
     const mainThread = process.getThreadByName("main");
     const secondRootThread = process.getThreadByName("secondRoot");
-    const subThread = process.getThreadByName("secondRoot -> sub");
+    const subThread = process.getThreadByName("secondRoot.sub");
 
     run(1);
 

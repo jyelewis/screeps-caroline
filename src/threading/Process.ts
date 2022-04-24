@@ -2,6 +2,7 @@ import { IThreadState } from "./IThreadState";
 import { Thread } from "./Thread";
 import { Task } from "./Task";
 import { ThreadCtx } from "./ThreadCtx";
+import { addToIndexMapArray } from "../utils/addToIndexMapArray";
 
 interface IProcessConfig {
   rootTask: Task;
@@ -180,12 +181,7 @@ export class Process {
   // ---- interrupts -----------------------
 
   public registerInterrupt(eventName: string, handler: () => void) {
-    const handlers = this.interruptHandlers.get(eventName);
-    if (handlers === undefined) {
-      this.interruptHandlers.set(eventName, [handler]);
-    } else {
-      handlers.push(handler);
-    }
+    addToIndexMapArray(this.interruptHandlers, eventName, handler);
   }
 
   public unregisterInterrupt(eventName: string, handler: () => void) {
