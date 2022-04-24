@@ -19,6 +19,8 @@ export class Thread<Props = unknown> {
 
   private interruptHandlers: Record<string, () => void> = {};
 
+  public showLogs = true;
+
   // ----- constructors -----------------------------------
   public constructor(
     private process: Process,
@@ -112,6 +114,17 @@ export class Thread<Props = unknown> {
 
   // ----- execution -----------------------------------
   public execute() {
+    // check for a version update
+    const runningVersion = this.state.taskVersion;
+    const codeVersion = this.task.version || 0;
+    if (runningVersion !== codeVersion) {
+      // underlying code has been updated, restart thread
+      this.log("Code updated, restarting");
+      this.state.taskVersion = codeVersion;
+
+      this.restart();
+    }
+
     const canExecute = () =>
       this.state.isRunning &&
       this.state.nextExecution !== null &&
@@ -231,6 +244,9 @@ export class Thread<Props = unknown> {
       // skip log lines while re-hydrating
       return;
     }
+    if (!this.showLogs) {
+      return;
+    }
 
     console.log(`${this.state.name}:`, ...msg);
   }
@@ -302,9 +318,6 @@ export class Thread<Props = unknown> {
   public restart() {
     if (!this.state.isRunning) {
       throw new Error("Cannot restart thread that isn't running");
-    }
-    if (this.isHydrating) {
-      throw new Error("Unexpected restart during hydration");
     }
 
     this.killAllChildren();

@@ -466,4 +466,28 @@ describe("threading", () => {
 
     run(1);
   });
+
+  it("Restarts thread if the underlying code changes", () => {
+    let counter = 0;
+    const mainTask: Task = function* mainTask(thread) {
+      counter++;
+
+      yield thread.suspend();
+    };
+    mainTask.version = 1;
+
+    const [run, process] = createProcess([mainTask]);
+
+    run(5);
+    expect(counter).toEqual(1);
+
+    // disable logs so we don't print the restart message in test
+    process.getThreadByName("main").showLogs = false;
+
+    // code update
+    mainTask.version = 2;
+
+    run(5);
+    expect(counter).toEqual(2); // should have restarted
+  });
 });
