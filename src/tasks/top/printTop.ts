@@ -2,7 +2,7 @@ import { Process } from "../../threading/Process";
 import { Thread } from "../../threading/Thread";
 import { printTable } from "../../utils/printTable";
 
-export function top(process: Process) {
+export function printTop(process: Process) {
   const allThreads = process.threads.slice();
   allThreads.sort((a, b) => a.name.localeCompare(b.name));
 

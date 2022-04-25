@@ -18,11 +18,10 @@ export function createProcess() {
     // from https://screeps.com/a/#!/shards
     tickPeriod: isSimulator ? 1 : 3.3,
 
+    // this is populated by contextd
     ctx: {
-      Game,
-      Memory,
-      Colonies: {}, // will be mutated & updated by colonyd
-    },
+      _og: 123,
+    } as any,
   });
 }
 

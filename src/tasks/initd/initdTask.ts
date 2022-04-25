@@ -1,27 +1,16 @@
 import { Task } from "../../threading/Task";
-import { creepdTask } from "../creepd/creepdTask";
-import { colonydTask } from "../colonyd/colonydTask";
+import { colonydTask } from "./tasks/colonyd/colonydTask";
 import { topTask } from "../top/topTask";
+import { contextdTask } from "./tasks/contextd/contextdTask";
+import { memoryCleanerdTask } from "./tasks/memoryCleanerd/memoryCleanerdTask";
 
 export const initdTask: Task = function* initdTask(thread) {
-  thread.log("Starting");
+  // start child daemons
+  thread.startSubThread(contextdTask, {});
+  thread.startSubThread(memoryCleanerdTask, {});
+  thread.startSubThread(colonydTask, {});
 
-  thread.startSubThread(
-    creepdTask,
-    {},
-    {
-      parentThreadId: null,
-    }
-  );
-
-  thread.startSubThread(
-    colonydTask,
-    {},
-    {
-      parentThreadId: null,
-    }
-  );
-
+  // start top level daemons
   thread.startSubThread(
     topTask,
     {},

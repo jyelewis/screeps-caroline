@@ -1,10 +1,10 @@
 import { Task } from "../../threading/Task";
-import { top } from "./top";
+import { printTop } from "./printTop";
 
 export const topTask: Task = function* topTask(thread) {
   thread.memo(() => {
     console.log("\n\n\n\n\n\n\n\n\n\n\n\n");
-    top(thread.process);
+    printTop(thread.process);
   });
 
   yield thread.sleepTick();

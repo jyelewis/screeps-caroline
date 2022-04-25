@@ -2,7 +2,7 @@ import { IThreadState } from "./IThreadState";
 import { Task } from "./Task";
 import { Process } from "./Process";
 import { randomBetween } from "../utils/randomBetween";
-import { ThreadCtx } from "./ThreadCtx";
+import { ThreadCtx } from "../context/ThreadCtx";
 
 export const YIELDME = "YIELDME" as const;
 
@@ -100,12 +100,17 @@ export class Thread<Props = unknown> {
     // call our function
     this.taskGenerator = this.task(this);
 
-    for (let pc = 0; pc < this.state.programCounter; pc++) {
-      // if our last call set a loop, we are continuing so clear it
-      this.loopFn = undefined;
+    try {
+      for (let pc = 0; pc < this.state.programCounter; pc++) {
+        // if our last call set a loop, we are continuing so clear it
+        this.loopFn = undefined;
 
-      // run until we yield again to match programCounter
-      this.taskGenerator.next();
+        // run until we yield again to match programCounter
+        this.taskGenerator.next();
+      }
+    } catch (e: any) {
+      this.handleCrash(e);
+      this.log("Crash occurred during hydration");
     }
 
     this.isHydrating = false;
@@ -195,6 +200,7 @@ export class Thread<Props = unknown> {
     } else {
       // else if no one is waiting on us, restart
       this.restart();
+      this.sleepSeconds(1); // don't try and run this again immediately
     }
   }
 

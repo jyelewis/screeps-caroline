@@ -1,7 +1,7 @@
 import { IThreadState } from "./IThreadState";
 import { Thread } from "./Thread";
 import { Task } from "./Task";
-import { ThreadCtx } from "./ThreadCtx";
+import { ThreadCtx } from "../context/ThreadCtx";
 import { addToIndexMapArray } from "../utils/addToIndexMapArray";
 
 interface IProcessConfig {
@@ -32,7 +32,7 @@ const createDefaultProcessState = (): IProcessState => ({
 export class Process {
   private state: IProcessState;
 
-  public readonly threads: Thread[] = [];
+  public readonly threads: Thread<any>[] = [];
   private threadsById = new Map<number, Thread>();
   private threadsByName = new Map<string, Thread>();
 
